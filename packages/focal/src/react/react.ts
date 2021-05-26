@@ -41,6 +41,8 @@ export class LiftWrapper<TProps>
     extends React.Component<LiftWrapperProps<TProps>, LiftWrapperState> {
   state = LiftWrapper._initState
 
+  inSync = false
+
   static _initState: LiftWrapperState = {
     renderCache: null,
     subscription: null
@@ -54,8 +56,23 @@ export class LiftWrapper<TProps>
     return this.state.renderCache || null
   }
 
+  setState(state: (LiftWrapperState | ((state: LiftWrapperState) => LiftWrapperState))) {
+    const newState = typeof state === 'function' ? state(this.state) : state
+
+    if ('subscription' in newState)
+      this.state.subscription = newState.subscription
+    if ('renderCache' in newState)
+      this.state.renderCache = newState.renderCache
+
+    if (this.inSync) {
+      this.forceUpdate()
+    }
+  }
+
   private _subscribe(newProps: LiftWrapperProps<TProps>) {
     const { props, component } = newProps
+
+    this.inSync = false
 
     let n = 0
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -82,6 +99,8 @@ export class LiftWrapper<TProps>
         new RenderMany(this, newProps, n) // eslint-disable-line
         break
     }
+
+    this.inSync = true
   }
 
   private _unsubscribe() {
